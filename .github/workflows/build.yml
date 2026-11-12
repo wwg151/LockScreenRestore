@@ -214,7 +214,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p website/depictions
-          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.aronsz26.lockscreenrestore.json
+          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.mg.LockScreenRestore.json
 
       - name: Commit and push packages
         shell: bash
