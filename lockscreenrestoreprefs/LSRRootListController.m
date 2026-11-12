@@ -79,11 +79,121 @@ static NSString *LSRLocalized(NSString *key) {
     return LSRStringsTable(@"Localizable")[key] ?: key;
 }
 
+// A small menu that hangs under the globe button and is only as wide as its longest entry;
+// UIMenu is a fixed width, which looked too wide for two short language names.
+@interface LSRLanguagePopoverController : UIViewController
+@property (nonatomic, copy) NSArray<NSString *> *titles;
+@property (nonatomic) NSInteger selectedIndex;
+@property (nonatomic, weak) UIView *anchorView;
+@property (nonatomic, copy) void (^selectionHandler)(NSInteger index);
+@end
+
 @interface LSRRootListController : PSListController
 - (void)applyLanguage;
 - (UIBarButtonItem *)languageButton;
-- (UIMenu *)languageMenu;
+- (void)showLanguagePopover:(UIButton *)sender;
 - (void)selectLanguage:(NSString *)code;
+@end
+
+@implementation LSRLanguagePopoverController {
+    UIVisualEffectView *_panel;
+    NSMutableArray<UIButton *> *_rows;
+    UIImageView *_check;
+}
+
+- (instancetype)init {
+    if ((self = [super init])) {
+        _rows = [NSMutableArray new];
+        self.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    }
+    return self;
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor clearColor];
+
+    UIControl *outside = [[UIControl alloc] initWithFrame:self.view.bounds];
+    outside.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [outside addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:outside];
+
+    _panel = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    _panel.layer.cornerRadius = 13;
+    _panel.layer.cornerCurve = kCACornerCurveContinuous;
+    _panel.clipsToBounds = YES;
+    [self.view addSubview:_panel];
+
+    for (NSUInteger i = 0; i < self.titles.count; i++) {
+        UIButton *row = [UIButton buttonWithType:UIButtonTypeSystem];
+        row.tag = (NSInteger)i;
+        row.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        row.titleLabel.font = [UIFont systemFontOfSize:17];
+        [row setTitle:self.titles[i] forState:UIControlStateNormal];
+        [row setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+        [row addTarget:self action:@selector(choose:) forControlEvents:UIControlEventTouchUpInside];
+        [_panel.contentView addSubview:row];
+        [_rows addObject:row];
+
+        if (i + 1 < self.titles.count) {
+            UIView *line = [[UIView alloc] init];
+            line.backgroundColor = [UIColor separatorColor];
+            line.tag = 9000 + (NSInteger)i;
+            [_panel.contentView addSubview:line];
+        }
+    }
+
+    _check = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark"]];
+    _check.tintColor = self.view.tintColor;
+    _check.contentMode = UIViewContentModeScaleAspectFit;
+    _check.hidden = self.selectedIndex < 0;
+    [_panel.contentView addSubview:_check];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+
+    CGFloat rowHeight = 44.0;
+    CGFloat padding = 16.0;
+    CGFloat checkmark = 26.0;
+    UIFont *font = [UIFont systemFontOfSize:17];
+    CGFloat widest = 0;
+    for (NSString *title in self.titles) {
+        widest = MAX(widest, [title sizeWithAttributes:@{NSFontAttributeName: font}].width);
+    }
+    CGFloat width = ceil(widest + padding * 2 + checkmark);
+    CGFloat height = rowHeight * (CGFloat)self.titles.count;
+
+    // Right under the button, centred on it and kept inside the screen.
+    CGRect anchor = CGRectZero;
+    if (self.anchorView.window) anchor = [self.anchorView.superview convertRect:self.anchorView.frame toView:self.view];
+    CGFloat x = CGRectGetMidX(anchor) - width / 2.0;
+    x = MAX(8.0, MIN(x, CGRectGetWidth(self.view.bounds) - width - 8.0));
+    CGFloat y = anchor.size.height > 0 ? CGRectGetMaxY(anchor) + 6.0 : 120.0;
+    _panel.frame = CGRectMake(round(x), round(y), width, height);
+
+    for (NSUInteger i = 0; i < _rows.count; i++) {
+        _rows[i].frame = CGRectMake(padding, rowHeight * (CGFloat)i, width - padding * 2, rowHeight);
+        UIView *line = [_panel.contentView viewWithTag:9000 + (NSInteger)i];
+        if (line) line.frame = CGRectMake(padding, rowHeight * (CGFloat)(i + 1), width - padding * 2, 0.5);
+    }
+    if (self.selectedIndex >= 0 && self.selectedIndex < (NSInteger)_rows.count) {
+        _check.frame = CGRectMake(width - padding - 20, rowHeight * (CGFloat)self.selectedIndex + (rowHeight - 20) / 2.0, 20, 20);
+    }
+}
+
+- (void)choose:(UIButton *)row {
+    NSInteger index = row.tag;
+    void (^handler)(NSInteger) = self.selectionHandler;
+    [self dismissViewControllerAnimated:NO completion:^{
+        if (handler) handler(index);
+    }];
+}
+
+- (void)close {
+    [self dismissViewControllerAnimated:NO completion:nil];
+}
+
 @end
 
 @implementation LSRRootListController
@@ -123,32 +233,25 @@ static NSString *LSRLocalized(NSString *key) {
     self.navigationItem.rightBarButtonItem = [self languageButton];
 }
 
-// The language list hangs off the globe button as a menu, the way the rest of iOS does it,
-// instead of rising from the bottom as an action sheet.
+// The button carries its own view so the menu knows where to hang from.
 - (UIBarButtonItem *)languageButton {
-    UIBarButtonItem *item = [[UIBarButtonItem alloc]
-        initWithImage:[UIImage systemImageNamed:@"globe"]
-                style:UIBarButtonItemStylePlain
-               target:nil
-               action:nil];
-    item.menu = [self languageMenu];
-    return item;
+    UIButton *globe = [UIButton buttonWithType:UIButtonTypeSystem];
+    [globe setImage:[UIImage systemImageNamed:@"globe"] forState:UIControlStateNormal];
+    globe.frame = CGRectMake(0, 0, 30, 30);
+    [globe addTarget:self action:@selector(showLanguagePopover:) forControlEvents:UIControlEventTouchUpInside];
+    return [[UIBarButtonItem alloc] initWithCustomView:globe];
 }
 
-- (UIMenu *)languageMenu {
-    NSString *current = LSRUILanguageCode();
+- (void)showLanguagePopover:(UIButton *)sender {
+    LSRLanguagePopoverController *popover = [LSRLanguagePopoverController new];
+    popover.titles = @[@"中文", @"English"];
+    popover.selectedIndex = LSRUsesChinese() ? 0 : 1;
+    popover.anchorView = sender;
     __weak LSRRootListController *weakSelf = self;
-    UIAction *chinese = [UIAction actionWithTitle:@"中文" image:nil identifier:nil
-                                          handler:^(UIAction *action) {
-        [weakSelf selectLanguage:@"zh"];
-    }];
-    chinese.state = [current isEqualToString:@"zh"] ? UIMenuElementStateOn : UIMenuElementStateOff;
-    UIAction *english = [UIAction actionWithTitle:@"English" image:nil identifier:nil
-                                          handler:^(UIAction *action) {
-        [weakSelf selectLanguage:@"en"];
-    }];
-    english.state = [current isEqualToString:@"en"] ? UIMenuElementStateOn : UIMenuElementStateOff;
-    return [UIMenu menuWithTitle:@"" children:@[chinese, english]];
+    popover.selectionHandler = ^(NSInteger index) {
+        [weakSelf selectLanguage:index == 0 ? @"zh" : @"en"];
+    };
+    [self presentViewController:popover animated:NO completion:nil];
 }
 
 // Chinese or English for this panel and the tweak's own screens. The choice is saved in the
@@ -157,7 +260,6 @@ static NSString *LSRLocalized(NSString *key) {
     LSRSetPref(kLSRLanguageKey, code);
     [self applyLanguage];
     [self reloadSpecifiers];
-    self.navigationItem.rightBarButtonItem.menu = [self languageMenu];
 }
 
 // The tweak reads the plist straight from disk when SpringBoard starts, but cfprefsd keeps
