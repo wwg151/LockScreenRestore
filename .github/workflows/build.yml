@@ -133,7 +133,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@main
         with:
-          pattern: AdSkip-*
+          pattern: LockScreenRestore-*
           path: debs
           merge-multiple: true
 
@@ -207,7 +207,7 @@ jobs:
           set -euo pipefail
           mkdir -p website/debs
           cp packages/*.deb website/debs/
-          ls -l website/debs/com.aronsz26.lockscreenrestore_*.deb
+          ls -l website/debs/com.mg.LockScreenRestore_*.deb
 
       - name: Generate Sileo depiction
         shell: bash
