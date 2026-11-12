@@ -13,7 +13,7 @@ static NSString *const kLSRLanguageKey = @"uiLanguage";
 
 // "zh" or "en", whatever was picked in the settings pane.
 static inline NSString *LSRLanguageOverride(void) {
-    CFStringRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)kLSRLanguageKey,
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)kLSRLanguageKey,
         (__bridge CFStringRef)kLSRLanguageDomain);
     NSString *language = value ? (__bridge_transfer NSString *)value : nil;
     return [language isKindOfClass:[NSString class]] && language.length ? language : nil;
