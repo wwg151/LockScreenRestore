@@ -1,0 +1,36 @@
+/* LockScreenRestore 设置面板 —— 简体中文文案。
+   左侧是 Resources/Root.plist 里的英文原文，右侧是中文。 */
+"LockScreenRestore" = "LockScreenRestore";
+
+"Padlock, time and date with iOS 15 sizes and positions, plain white instead of tinted, no depth effect." = "挂锁、时间和日期采用 iOS 15 的大小与位置，纯白色而非着色，也没有景深效果。";
+"iOS 15 Clock" = "iOS 15 时钟";
+
+"Clock Size" = "时钟大小";
+"Clock size relative to the calculated iOS 15 size (1.0). Adjust it if the clock looks too small or too big on your iPhone, then respring." = "时钟大小相对于计算出的 iOS 15 尺寸（1.0）。如果时钟在你的 iPhone 上偏小或偏大，可以调整后再注销。";
+
+"Focus shown as a pill under the date instead of at the bottom of the screen." = "专注模式以胶囊形式显示在日期下方，而不是屏幕底部。";
+"iOS 15 Focus" = "iOS 15 专注模式";
+
+"Notifications listed right under the clock instead of anchored at the bottom, with iOS 15 card shape and spacing." = "通知直接排列在时钟下方，而不是固定在底部，并使用 iOS 15 的卡片形状与间距。";
+"iOS 15 Notifications" = "iOS 15 通知";
+
+"Music player with the iOS 15 layout: large artwork, AirPlay next to the title, time under the progress bar and a volume slider." = "采用 iOS 15 布局的音乐播放器：大封面、标题旁的 AirPlay、进度条下方的时间，以及音量滑块。";
+"iOS 15 Music Player" = "iOS 15 音乐播放器";
+
+"The iOS 15 unlock animation: the home screen wallpaper follows your swipe with a little parallax, and the lock screen only blurs when lock and home screen have different wallpapers." = "iOS 15 解锁动画：主屏幕壁纸会随着你的滑动带有一点视差效果，并且只有在锁屏和主屏幕壁纸不同时，锁屏才会模糊。";
+"iOS 15 Unlock Animation" = "iOS 15 解锁动画";
+
+"The lighter iOS 15 shadow under the app names on the home screen. iOS 16 draws it much darker." = "主屏幕上应用名称下方的较浅 iOS 15 阴影。iOS 16 绘制的阴影要深得多。";
+"iOS 15 Icon Label Shadows" = "iOS 15 图标标签阴影";
+
+"iOS 15 live wallpapers with automatic Light/Dark switching, and the iOS 15 page in Settings > Wallpaper to pick them (or a photo) for the lock and home screen. Apple's iOS 14 and 15 wallpapers can be downloaded right there. Press and hold the lock screen to play. Turn this off to get iOS 16's wallpapers and lock screen editor back." = "iOS 15 实况壁纸，可自动切换浅色与深色，并在「设置 > 墙纸」中提供 iOS 15 样式页面，为锁屏和主屏幕选择实况壁纸（或照片）。Apple 的 iOS 14 与 iOS 15 壁纸可以直接在那里下载。长按锁屏即可播放。关闭后将恢复 iOS 16 的壁纸与锁屏编辑器。";
+"iOS 15 Live Wallpaper" = "iOS 15 实况壁纸";
+
+"Sizes and positions are calculated for your screen every time SpringBoard starts. Fix Positions shows what was detected and recalculates." = "每次 SpringBoard 启动时都会为你的屏幕计算尺寸和位置。“修复位置”会显示检测到的内容并重新计算。";
+"Fix Positions" = "修复位置";
+
+"Changes take effect after a respring." = "更改在注销后生效。";
+"Apply (Respring)" = "注销生效";
+
+"Turns every switch back on and resets Clock Size. Your wallpapers stay." = "重新打开所有开关并重置时钟大小。你的壁纸将保持不变。";
+"Reset to Defaults" = "恢复默认";

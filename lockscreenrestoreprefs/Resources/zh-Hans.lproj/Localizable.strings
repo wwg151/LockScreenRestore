@@ -1,0 +1,11 @@
+/* LockScreenRestore 设置面板 —— 弹窗文案的简体中文。
+   左侧是 LSRRootListController.m 里的英文原文。 */
+"Fix Positions" = "修复位置";
+"Cancel" = "取消";
+"Respring" = "注销";
+"Padlock, clock, date and Focus pill will be recalculated for this screen after a respring." = "注销后，将按这块屏幕重新计算挂锁、时钟、日期和专注模式胶囊的位置。";
+"This iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot." = "这台 iPhone 尚未经过测试。如果显示异常，请在 GitHub 上附上截图提交 issue。";
+
+"Reset to Defaults" = "恢复默认";
+"Reset" = "恢复";
+"All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring." = "所有开关和时钟大小将恢复默认值。你的壁纸保持不变。iPhone 将会注销。";

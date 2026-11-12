@@ -1,0 +1,36 @@
+/* LockScreenRestore preference bundle — English (base) strings.
+   Keys are the strings written in Resources/Root.plist. */
+"LockScreenRestore" = "LockScreenRestore";
+
+"Padlock, time and date with iOS 15 sizes and positions, plain white instead of tinted, no depth effect." = "Padlock, time and date with iOS 15 sizes and positions, plain white instead of tinted, no depth effect.";
+"iOS 15 Clock" = "iOS 15 Clock";
+
+"Clock Size" = "Clock Size";
+"Clock size relative to the calculated iOS 15 size (1.0). Adjust it if the clock looks too small or too big on your iPhone, then respring." = "Clock size relative to the calculated iOS 15 size (1.0). Adjust it if the clock looks too small or too big on your iPhone, then respring.";
+
+"Focus shown as a pill under the date instead of at the bottom of the screen." = "Focus shown as a pill under the date instead of at the bottom of the screen.";
+"iOS 15 Focus" = "iOS 15 Focus";
+
+"Notifications listed right under the clock instead of anchored at the bottom, with iOS 15 card shape and spacing." = "Notifications listed right under the clock instead of anchored at the bottom, with iOS 15 card shape and spacing.";
+"iOS 15 Notifications" = "iOS 15 Notifications";
+
+"Music player with the iOS 15 layout: large artwork, AirPlay next to the title, time under the progress bar and a volume slider." = "Music player with the iOS 15 layout: large artwork, AirPlay next to the title, time under the progress bar and a volume slider.";
+"iOS 15 Music Player" = "iOS 15 Music Player";
+
+"The iOS 15 unlock animation: the home screen wallpaper follows your swipe with a little parallax, and the lock screen only blurs when lock and home screen have different wallpapers." = "The iOS 15 unlock animation: the home screen wallpaper follows your swipe with a little parallax, and the lock screen only blurs when lock and home screen have different wallpapers.";
+"iOS 15 Unlock Animation" = "iOS 15 Unlock Animation";
+
+"The lighter iOS 15 shadow under the app names on the home screen. iOS 16 draws it much darker." = "The lighter iOS 15 shadow under the app names on the home screen. iOS 16 draws it much darker.";
+"iOS 15 Icon Label Shadows" = "iOS 15 Icon Label Shadows";
+
+"iOS 15 live wallpapers with automatic Light/Dark switching, and the iOS 15 page in Settings > Wallpaper to pick them (or a photo) for the lock and home screen. Apple's iOS 14 and 15 wallpapers can be downloaded right there. Press and hold the lock screen to play. Turn this off to get iOS 16's wallpapers and lock screen editor back." = "iOS 15 live wallpapers with automatic Light/Dark switching, and the iOS 15 page in Settings > Wallpaper to pick them (or a photo) for the lock and home screen. Apple's iOS 14 and 15 wallpapers can be downloaded right there. Press and hold the lock screen to play. Turn this off to get iOS 16's wallpapers and lock screen editor back.";
+"iOS 15 Live Wallpaper" = "iOS 15 Live Wallpaper";
+
+"Sizes and positions are calculated for your screen every time SpringBoard starts. Fix Positions shows what was detected and recalculates." = "Sizes and positions are calculated for your screen every time SpringBoard starts. Fix Positions shows what was detected and recalculates.";
+"Fix Positions" = "Fix Positions";
+
+"Changes take effect after a respring." = "Changes take effect after a respring.";
+"Apply (Respring)" = "Apply (Respring)";
+
+"Turns every switch back on and resets Clock Size. Your wallpapers stay." = "Turns every switch back on and resets Clock Size. Your wallpapers stay.";
+"Reset to Defaults" = "Reset to Defaults";

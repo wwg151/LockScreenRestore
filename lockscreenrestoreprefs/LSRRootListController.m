@@ -48,6 +48,19 @@ static NSString *LSRDeviceName(NSString *model) {
     return names[model] ?: model;
 }
 
+// The panel's own strings live in the bundle's en.lproj and zh-Hans.lproj, one table for the
+// labels and footnotes in Root.plist (Root.strings) and one for the alerts below
+// (Localizable.strings). English is the base: a key with no translation stays as it is.
+static NSString *LSRLocalized(NSString *key) {
+    static NSBundle *bundle;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        bundle = [NSBundle bundleForClass:NSClassFromString(@"LSRRootListController")]
+            ?: [NSBundle bundleWithIdentifier:@"com.aronsz26.lockscreenrestore.prefs"];
+    });
+    return [bundle localizedStringForKey:key value:key table:@"Localizable"];
+}
+
 @interface LSRRootListController : PSListController
 @end
 
@@ -103,11 +116,11 @@ static void LSRWritePrefsFile(NSString *changedKey, id changedValue) {
 // Every switch and the Clock Size slider back to its default (the wallpapers picked in
 // Settings > Wallpaper stay), then a respring so SpringBoard picks it up.
 - (void)resetToDefaults {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Reset to Defaults"
-        message:@"All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring."
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Reset to Defaults")
+        message:LSRLocalized(@"All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring.")
         preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Reset") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         CFStringRef domain = (__bridge CFStringRef)kLSRDomain;
         NSMutableArray<NSString *> *keys = [NSMutableArray new];
         for (PSSpecifier *specifier in [self specifiers]) {
@@ -145,16 +158,17 @@ static void LSRWritePrefsFile(NSString *changedKey, id changedValue) {
 
     NSMutableString *message = [NSMutableString stringWithFormat:@"%@\n%.0f × %.0f pt @%.0fx\n\n",
         LSRDeviceName(model), MIN(size.width, size.height), MAX(size.width, size.height), screen.scale];
-    [message appendString:@"Padlock, clock, date and Focus pill will be recalculated for this screen after a respring."];
+    [message appendString:LSRLocalized(@"Padlock, clock, date and Focus pill will be recalculated for this screen after a respring.")];
     if (![model isEqualToString:kLSRTestedModel]) {
-        [message appendString:@"\n\nThis iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot."];
+        [message appendFormat:@"\n\n%@",
+            LSRLocalized(@"This iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot.")];
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Fix Positions"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Fix Positions")
                                                                    message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Respring" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Respring") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         [self respring];
     }]];
     [self presentViewController:alert animated:YES completion:nil];

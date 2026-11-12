@@ -1,0 +1,11 @@
+/* LockScreenRestore preference bundle — English (base) strings for the alerts in
+   LSRRootListController.m. */
+"Fix Positions" = "Fix Positions";
+"Cancel" = "Cancel";
+"Respring" = "Respring";
+"Padlock, clock, date and Focus pill will be recalculated for this screen after a respring." = "Padlock, clock, date and Focus pill will be recalculated for this screen after a respring.";
+"This iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot." = "This iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot.";
+
+"Reset to Defaults" = "Reset to Defaults";
+"Reset" = "Reset";
+"All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring." = "All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring.";
