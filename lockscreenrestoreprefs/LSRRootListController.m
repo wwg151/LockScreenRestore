@@ -81,7 +81,9 @@ static NSString *LSRLocalized(NSString *key) {
 
 @interface LSRRootListController : PSListController
 - (void)applyLanguage;
-- (void)chooseLanguage;
+- (UIBarButtonItem *)languageButton;
+- (UIMenu *)languageMenu;
+- (void)selectLanguage:(NSString *)code;
 @end
 
 @implementation LSRRootListController
@@ -118,31 +120,44 @@ static NSString *LSRLocalized(NSString *key) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
+    self.navigationItem.rightBarButtonItem = [self languageButton];
+}
+
+// The language list hangs off the globe button as a menu, the way the rest of iOS does it,
+// instead of rising from the bottom as an action sheet.
+- (UIBarButtonItem *)languageButton {
+    UIBarButtonItem *item = [[UIBarButtonItem alloc]
         initWithImage:[UIImage systemImageNamed:@"globe"]
                 style:UIBarButtonItemStylePlain
-               target:self
-               action:@selector(chooseLanguage)];
+               target:nil
+               action:nil];
+    item.menu = [self languageMenu];
+    return item;
+}
+
+- (UIMenu *)languageMenu {
+    NSString *current = LSRUILanguageCode();
+    __weak LSRRootListController *weakSelf = self;
+    UIAction *chinese = [UIAction actionWithTitle:@"中文" image:nil identifier:nil
+                                          handler:^(UIAction *action) {
+        [weakSelf selectLanguage:@"zh"];
+    }];
+    chinese.state = [current isEqualToString:@"zh"] ? UIMenuElementStateOn : UIMenuElementStateOff;
+    UIAction *english = [UIAction actionWithTitle:@"English" image:nil identifier:nil
+                                          handler:^(UIAction *action) {
+        [weakSelf selectLanguage:@"en"];
+    }];
+    english.state = [current isEqualToString:@"en"] ? UIMenuElementStateOn : UIMenuElementStateOff;
+    return [UIMenu menuWithTitle:@"" children:@[chinese, english]];
 }
 
 // Chinese or English for this panel and the tweak's own screens. The choice is saved in the
 // tweak's own preferences, so SpringBoard and the wallpaper page read the same language.
-- (void)chooseLanguage {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Language")
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    NSString *current = LSRUILanguageCode();
-    for (NSArray<NSString *> *choice in @[@[@"zh", @"中文"], @[@"en", @"English"]]) {
-        NSString *title = [choice[0] isEqualToString:current] ? [@"✓ " stringByAppendingString:choice[1]] : choice[1];
-        [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-            LSRSetPref(kLSRLanguageKey, choice[0]);
-            [self applyLanguage];
-            [self reloadSpecifiers];
-        }]];
-    }
-    [sheet addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
-    sheet.popoverPresentationController.barButtonItem = self.navigationItem.rightBarButtonItem;
-    [self presentViewController:sheet animated:YES completion:nil];
+- (void)selectLanguage:(NSString *)code {
+    LSRSetPref(kLSRLanguageKey, code);
+    [self applyLanguage];
+    [self reloadSpecifiers];
+    self.navigationItem.rightBarButtonItem.menu = [self languageMenu];
 }
 
 // The tweak reads the plist straight from disk when SpringBoard starts, but cfprefsd keeps
