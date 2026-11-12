@@ -1,5 +1,6 @@
 /* LockScreenRestore 设置面板 —— 弹窗文案的简体中文。
    左侧是 LSRRootListController.m 里的英文原文。 */
+"Language" = "语言";
 "Fix Positions" = "修复位置";
 "Cancel" = "取消";
 "Respring" = "注销";

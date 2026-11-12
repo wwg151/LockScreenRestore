@@ -1,5 +1,6 @@
 /* LockScreenRestore preference bundle — English (base) strings for the alerts in
    LSRRootListController.m. */
+"Language" = "Language";
 "Fix Positions" = "Fix Positions";
 "Cancel" = "Cancel";
 "Respring" = "Respring";

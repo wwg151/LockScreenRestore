@@ -1,6 +1,8 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
+#import <objc/runtime.h>
 #import <sys/sysctl.h>
+#import "../LSRLocalize.h"
 
 @interface FBSSystemService : NSObject
 + (instancetype)sharedService;
@@ -48,20 +50,38 @@ static NSString *LSRDeviceName(NSString *model) {
     return names[model] ?: model;
 }
 
-// The panel's own strings live in the bundle's en.lproj and zh-Hans.lproj, one table for the
-// labels and footnotes in Root.plist (Root.strings) and one for the alerts below
-// (Localizable.strings). English is the base: a key with no translation stays as it is.
-static NSString *LSRLocalized(NSString *key) {
+// The panel's text lives beside the bundle in en.lproj and zh-Hans.lproj: LSRText.strings holds
+// the labels and footnotes of Root.plist, Localizable.strings the alerts and the language sheet.
+// The language picked with the globe button wins over the device language (see LSRLocalize.h);
+// Root.plist itself stays English and is never handed to Preferences' own localization, so what
+// is on screen is exactly the table we choose.
+static char kLSROriginalTextKey;
+
+static void LSRSetPref(NSString *key, id value);
+
+static NSBundle *LSRBundle(void) {
     static NSBundle *bundle;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         bundle = [NSBundle bundleForClass:NSClassFromString(@"LSRRootListController")]
             ?: [NSBundle bundleWithIdentifier:@"com.aronsz26.lockscreenrestore.prefs"];
     });
-    return [bundle localizedStringForKey:key value:key table:@"Localizable"];
+    return bundle;
+}
+
+static NSDictionary *LSRStringsTable(NSString *name) {
+    NSString *language = LSRUsesChinese() ? @"zh-Hans" : @"en";
+    NSString *path = [LSRBundle() pathForResource:name ofType:@"strings" inDirectory:nil forLocalization:language];
+    return path ? ([NSDictionary dictionaryWithContentsOfFile:path] ?: @{}) : @{};
+}
+
+static NSString *LSRLocalized(NSString *key) {
+    return LSRStringsTable(@"Localizable")[key] ?: key;
 }
 
 @interface LSRRootListController : PSListController
+- (void)applyLanguage;
+- (void)chooseLanguage;
 @end
 
 @implementation LSRRootListController
@@ -69,8 +89,57 @@ static NSString *LSRLocalized(NSString *key) {
 - (NSArray *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
+        [self applyLanguage];
     }
     return _specifiers;
+}
+
+- (void)applyLanguage {
+    NSDictionary *table = LSRStringsTable(@"LSRText");
+    for (PSSpecifier *specifier in _specifiers) {
+        NSMutableDictionary *original = objc_getAssociatedObject(specifier, &kLSROriginalTextKey);
+        if (!original) {
+            original = [NSMutableDictionary new];
+            for (NSString *key in @[@"label", @"footerText", @"title"]) {
+                NSString *value = [specifier propertyForKey:key];
+                if (value) original[key] = value;
+            }
+            objc_setAssociatedObject(specifier, &kLSROriginalTextKey, original, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        [original enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) {
+            [specifier setProperty:(table[value] ?: value) forKey:key];
+        }];
+    }
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc]
+        initWithImage:[UIImage systemImageNamed:@"globe"]
+                style:UIBarButtonItemStylePlain
+               target:self
+               action:@selector(chooseLanguage)];
+}
+
+// Chinese or English for this panel and the tweak's own screens, whatever the device language
+// is. The choice is saved in the tweak's own preferences, so SpringBoard and the wallpaper page
+// read the same language.
+- (void)chooseLanguage {
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Language")
+                                                                  message:nil
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    NSString *current = LSRUILanguageCode();
+    for (NSArray<NSString *> *choice in @[@[@"zh", @"中文"], @[@"en", @"English"]]) {
+        NSString *title = [choice[0] isEqualToString:current] ? [@"✓ " stringByAppendingString:choice[1]] : choice[1];
+        [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            LSRSetPref(kLSRLanguageKey, choice[0]);
+            [self applyLanguage];
+            [self reloadSpecifiers];
+        }]];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    sheet.popoverPresentationController.barButtonItem = self.navigationItem.rightBarButtonItem;
+    [self presentViewController:sheet animated:YES completion:nil];
 }
 
 // The tweak reads the plist straight from disk when SpringBoard starts, but cfprefsd keeps
@@ -106,6 +175,15 @@ static void LSRWritePrefsFile(NSString *changedKey, id changedValue) {
         else [prefs removeObjectForKey:changedKey];
     }
     [prefs writeToFile:path atomically:YES];
+}
+
+// A value that has no row in Root.plist (the language): cfprefsd first, so the tweak reads it at
+// once, then the file SpringBoard reads.
+static void LSRSetPref(NSString *key, id value) {
+    CFStringRef domain = (__bridge CFStringRef)kLSRDomain;
+    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, domain);
+    CFPreferencesAppSynchronize(domain);
+    LSRWritePrefsFile(key, value);
 }
 
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
