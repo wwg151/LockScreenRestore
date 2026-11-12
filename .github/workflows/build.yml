@@ -116,10 +116,11 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@main
         with:
-          name: AdSkip-${{ matrix.type }}
+          name: LockScreenRestore-${{ matrix.type }}
           path: out/*.deb
           if-no-files-found: error
           retention-days: 30
+
   publish:
     name: Publish debs to GitHub Releases
     needs: build
@@ -157,13 +158,13 @@ jobs:
           fi
 
           # Fixed-name copies so the download URL never depends on the version.
-          cp debs/*-rootless.deb debs/AdSkip-dev-rootless.deb
-          cp debs/*-roothide.deb debs/AdSkip-dev-roothide.deb
+          cp debs/*-rootless.deb debs/LockScreenRestore-dev-rootless.deb
+          cp debs/*-roothide.deb debs/LockScreenRestore-dev-roothide.deb
           ( cd debs && sha256sum ./*.deb > SHA256SUMS )
 
           gh release upload "$tag" debs/*.deb debs/SHA256SUMS --clobber
-          echo "https://github.com/$GH_REPO/releases/download/$tag/AdSkip-dev-rootless.deb"
-          echo "https://github.com/$GH_REPO/releases/download/$tag/AdSkip-dev-roothide.deb"
+          echo "https://github.com/$GH_REPO/releases/download/$tag/LockScreenRestore-dev-rootless.deb"
+          echo "https://github.com/$GH_REPO/releases/download/$tag/LockScreenRestore-dev-roothide.deb"
 
   deploy:
     name: Push packages to repo
@@ -206,14 +207,14 @@ jobs:
           set -euo pipefail
           mkdir -p website/debs
           cp packages/*.deb website/debs/
-          ls -l website/debs/com.mg.adskip_*.deb
+          ls -l website/debs/com.aronsz26.lockscreenrestore_*.deb
 
       - name: Generate Sileo depiction
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p website/depictions
-          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.mg.adskip.json
+          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.aronsz26.lockscreenrestore.json
 
       - name: Commit and push packages
         shell: bash
