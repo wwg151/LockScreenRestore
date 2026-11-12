@@ -121,9 +121,8 @@ static NSString *LSRLocalized(NSString *key) {
                action:@selector(chooseLanguage)];
 }
 
-// Chinese or English for this panel and the tweak's own screens, whatever the device language
-// is. The choice is saved in the tweak's own preferences, so SpringBoard and the wallpaper page
-// read the same language.
+// Chinese or English for this panel and the tweak's own screens. The choice is saved in the
+// tweak's own preferences, so SpringBoard and the wallpaper page read the same language.
 - (void)chooseLanguage {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Language")
                                                                   message:nil

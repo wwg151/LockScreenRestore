@@ -3,8 +3,8 @@
 // Resources/<language>.lproj/*.strings; these strings are compiled in because the tweak runs in
 // SpringBoard, Preferences and MediaRemoteUI, where that bundle is not always loaded.
 //
-// The language is the one picked with the globe button in the settings pane ("uiLanguage" in
-// com.aronsz26.lockscreenrestore, "zh" or "en"); with no choice it follows the device language.
+// English until a language is selected in the settings pane ("uiLanguage" in
+// com.aronsz26.lockscreenrestore: "zh" for Chinese, "en" or unset for English).
 
 #import <Foundation/Foundation.h>
 
@@ -19,13 +19,9 @@ static inline NSString *LSRLanguageOverride(void) {
     return [language isKindOfClass:[NSString class]] && language.length ? language : nil;
 }
 
-// "zh" or "en": the picked language, else the device's.
+// "zh" or "en": the picked language, English until something is picked.
 static inline NSString *LSRUILanguageCode(void) {
-    NSString *picked = LSRLanguageOverride();
-    if ([picked isEqualToString:@"zh"]) return @"zh";
-    if ([picked isEqualToString:@"en"]) return @"en";
-    NSString *language = [NSLocale preferredLanguages].firstObject ?: @"en";
-    return [language hasPrefix:@"zh"] ? @"zh" : @"en";
+    return [LSRLanguageOverride() isEqualToString:@"zh"] ? @"zh" : @"en";
 }
 
 static inline BOOL LSRUsesChinese(void) {
