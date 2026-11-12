@@ -109,6 +109,10 @@ static NSString *LSRLocalized(NSString *key) {
         [original enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) {
             [specifier setProperty:(table[value] ?: value) forKey:key];
         }];
+        // A cell takes its text from the specifier's name, not from the label property, so the
+        // switch and group titles only follow the language through this.
+        NSString *label = original[@"label"];
+        if (label) specifier.name = table[label] ?: label;
     }
 }
 
