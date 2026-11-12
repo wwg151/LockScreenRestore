@@ -15,6 +15,7 @@
 #import <dlfcn.h>
 #import <ImageIO/ImageIO.h>
 #import "LSRBokeh.h"
+#import "LSRLocalize.h"
 #import <AVFoundation/AVFoundation.h>
 
 static NSString *const kLSRPaneDomain = @"com.aronsz26.lockscreenrestore";
@@ -302,7 +303,7 @@ static CGFloat LSRPaneStillZoom(CGSize image) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Wallpaper";
+    self.title = LSRText(@"Wallpaper", @"墙纸");
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"row"];
     [self.tableView registerClass:[LSRWallpaperPreviewCell class] forCellReuseIdentifier:@"preview"];
@@ -322,8 +323,10 @@ static CGFloat LSRPaneStillZoom(CGSize image) {
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 0) return @"When Dark Appearance is on, iPhone will dim your wallpaper depending on your ambient light.";
-    return @"Dynamic wallpaper and perspective zoom are disabled when Low Power Mode is on.";
+    if (section == 0) return LSRText(@"When Dark Appearance is on, iPhone will dim your wallpaper depending on your ambient light.",
+        @"开启深色外观后，iPhone 会根据环境光调暗你的墙纸。");
+    return LSRText(@"Dynamic wallpaper and perspective zoom are disabled when Low Power Mode is on.",
+        @"开启低电量模式时，动态墙纸和透视缩放会被停用。");
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -339,12 +342,12 @@ static CGFloat LSRPaneStillZoom(CGSize image) {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"row" forIndexPath:indexPath];
     UIListContentConfiguration *content = [UIListContentConfiguration cellConfiguration];
     if (indexPath.row == 0) {
-        content.text = @"Choose a New Wallpaper";
+        content.text = LSRText(@"Choose a New Wallpaper", @"选择新墙纸");
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.accessoryView = nil;
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     } else {
-        content.text = @"Dark Appearance Dims Wallpaper";
+        content.text = LSRText(@"Dark Appearance Dims Wallpaper", @"深色外观会调暗墙纸");
         UISwitch *toggle = [UISwitch new];
         toggle.on = LSRPanePrefEnabled(LSRPanePrefs(), @"dimWallpaperInDark", NO);
         [toggle addTarget:self action:@selector(_dimToggled:) forControlEvents:UIControlEventValueChanged];
@@ -378,7 +381,7 @@ static CGFloat LSRPaneStillZoom(CGSize image) {
         list = nil;
     }
     if (!list) return;
-    list.title = @"Choose";
+    list.title = LSRText(@"Choose", @"选择");
     [self.navigationController pushViewController:list animated:YES];
 }
 
@@ -394,9 +397,9 @@ typedef NS_ENUM(NSInteger, LSRWallpaperKind) {
 
 static NSString *LSRWallpaperKindTitle(LSRWallpaperKind kind) {
     switch (kind) {
-        case LSRWallpaperKindDynamic: return @"Dynamic";
-        case LSRWallpaperKindStills: return @"Stills";
-        case LSRWallpaperKindLive: return @"Live";
+        case LSRWallpaperKindDynamic: return LSRText(@"Dynamic", @"动态");
+        case LSRWallpaperKindStills: return LSRText(@"Stills", @"静态");
+        case LSRWallpaperKindLive: return LSRText(@"Live", @"实况");
     }
     return @"";
 }
@@ -816,8 +819,8 @@ static void LSRApplyWallpaper(NSString *design, UIImage *photo, NSURL *video, LS
     _dateLabel.font = [UIFont systemFontOfSize:20];
     [self.view addSubview:_dateLabel];
 
-    _cancel = [self _barButton:@"Cancel" action:@selector(_cancelTapped)];
-    _set = [self _barButton:@"Set" action:@selector(_setTapped)];
+    _cancel = [self _barButton:LSRText(@"Cancel", @"取消") action:@selector(_cancelTapped)];
+    _set = [self _barButton:LSRText(@"Set", @"设定") action:@selector(_setTapped)];
     // iOS 15's toggle between the buttons (Dynamic wallpapers move on their own).
     id saved = LSRPanePrefs()[@"perspectiveZoom"];
     _perspectiveOn = saved ? [saved boolValue] : YES;
@@ -831,7 +834,7 @@ static void LSRApplyWallpaper(NSString *design, UIImage *photo, NSURL *video, LS
     }
     if (_live) {
         _hint = [UILabel new];
-        _hint.text = @"Touch and hold to play";
+        _hint.text = LSRText(@"Touch and hold to play", @"长按即可播放");
         _hint.textColor = [UIColor whiteColor];
         _hint.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
         _hint.textAlignment = NSTextAlignmentCenter;
@@ -844,7 +847,8 @@ static void LSRApplyWallpaper(NSString *design, UIImage *photo, NSURL *video, LS
 }
 
 - (void)_updatePerspectiveTitle {
-    [_perspective setTitle:_perspectiveOn ? @"Perspective Zoom: On" : @"Perspective Zoom: Off" forState:UIControlStateNormal];
+    [_perspective setTitle:_perspectiveOn ? LSRText(@"Perspective Zoom: On", @"透视缩放：开")
+                                          : LSRText(@"Perspective Zoom: Off", @"透视缩放：关") forState:UIControlStateNormal];
 }
 
 - (void)_perspectiveTapped {
@@ -915,16 +919,16 @@ static void LSRApplyWallpaper(NSString *design, UIImage *photo, NSURL *video, LS
 - (void)_setTapped {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil message:nil
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Set Lock Screen" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Set Lock Screen", @"设为锁定屏幕") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         [self _applyToLocations:LSRWallpaperLocationLockScreen];
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Set Home Screen" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Set Home Screen", @"设为主屏幕") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         [self _applyToLocations:LSRWallpaperLocationHomeScreen];
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Set Both" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Set Both", @"同时设定") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         [self _applyToLocations:LSRWallpaperLocationLockScreen | LSRWallpaperLocationHomeScreen];
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Cancel", @"取消") style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = _set;
     [self presentViewController:sheet animated:YES completion:nil];
 }
@@ -1266,7 +1270,7 @@ static void LSRRemoteThumbnail(LSRRemoteDesign *design, void (^completion)(UIIma
     [self.collectionView registerClass:[LSRGridHeader class] forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
                    withReuseIdentifier:@"header"];
     _emptyLabel = [UILabel new];
-    _emptyLabel.text = @"No Wallpapers";
+    _emptyLabel.text = LSRText(@"No Wallpapers", @"没有墙纸");
     _emptyLabel.textColor = [UIColor secondaryLabelColor];
     _emptyLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2];
     _emptyLabel.textAlignment = NSTextAlignmentCenter;
@@ -1318,7 +1322,7 @@ static void LSRRemoteThumbnail(LSRRemoteDesign *design, void (^completion)(UIIma
 
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath {
     LSRGridHeader *header = [collectionView dequeueReusableSupplementaryViewOfKind:kind withReuseIdentifier:@"header" forIndexPath:indexPath];
-    header.label.text = @"Available to Download";
+    header.label.text = LSRText(@"Available to Download", @"可下载的墙纸");
     return header;
 }
 
@@ -1346,9 +1350,10 @@ static void LSRRemoteThumbnail(LSRRemoteDesign *design, void (^completion)(UIIma
         [self->_downloading removeObject:design.name];
         if (!ok) {
             [self.collectionView reloadData];
-            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Download Failed"
-                message:@"Check your internet connection and try again." preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:LSRText(@"Download Failed", @"下载失败")
+                message:LSRText(@"Check your internet connection and try again.", @"请检查网络连接，然后重试。")
+                preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:LSRText(@"OK", @"好") style:UIAlertActionStyleCancel handler:nil]];
             [self presentViewController:alert animated:YES completion:nil];
             return;
         }
@@ -1410,16 +1415,16 @@ static void LSRRemoteThumbnail(LSRRemoteDesign *design, void (^completion)(UIIma
             dispatch_async(dispatch_get_main_queue(), ^{ [weakPreview dismissViewControllerAnimated:YES completion:nil]; });
         }];
     };
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Set Lock Screen" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Set Lock Screen", @"设为锁定屏幕") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         set(LSRWallpaperLocationLockScreen);
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Set Home Screen" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Set Home Screen", @"设为主屏幕") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         set(LSRWallpaperLocationHomeScreen);
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Set Both" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Set Both", @"同时设定") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         set(LSRWallpaperLocationLockScreen | LSRWallpaperLocationHomeScreen);
     }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [sheet addAction:[UIAlertAction actionWithTitle:LSRText(@"Cancel", @"取消") style:UIAlertActionStyleCancel handler:nil]];
     sheet.popoverPresentationController.sourceView = preview.view;
     [preview presentViewController:sheet animated:YES completion:nil];
 }
