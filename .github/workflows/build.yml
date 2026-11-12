@@ -1,0 +1,231 @@
+name: Build LockScreenRestore and Deploy Repo
+
+on:
+  push:
+    branches: ["*"]
+    paths-ignore:
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adskip-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+  HOMEBREW_NO_ANALYTICS: "1"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Rootless
+            type: rootless
+            architecture: iphoneos-arm64
+            theos: https://github.com/theos/theos.git
+            scheme: rootless
+            target: iphone:clang:16.5:15.0
+    
+          - name: RootHide
+            type: roothide
+            architecture: iphoneos-arm64e
+            theos: https://github.com/roothide/theos.git
+            scheme: roothide
+            target: iphone:clang:16.5:15.0
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@main
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          formulae=()
+          command -v dpkg-deb >/dev/null 2>&1 || formulae+=(dpkg)
+          command -v ldid >/dev/null 2>&1 || formulae+=(ldid)
+          if (( ${#formulae[@]} > 0 )); then
+            brew install "${formulae[@]}"
+          fi
+          dpkg-deb --version | head -1
+          ldid 2>&1 | head -1 || true
+
+      - name: Install Theos
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --recursive "${{ matrix.theos }}" "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Install iPhoneOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/theos/sdks.git "$HOME/theos-sdks"
+          SDK="$HOME/theos-sdks/iPhoneOS16.5.sdk"
+          if [ ! -d "$SDK" ]; then
+            echo "iPhoneOS16.5.sdk not found"
+            find "$HOME/theos-sdks" -maxdepth 1 -name "*.sdk" -print
+            exit 1
+          fi
+          mkdir -p "$THEOS/sdks"
+          cp -R "$SDK" "$THEOS/sdks/"
+
+      - name: Build package (${{ matrix.type }})
+        shell: bash
+        run: |
+          set -euo pipefail
+          make clean
+          make package \
+            TARGET="${{ matrix.target }}" \
+            THEOS_PACKAGE_SCHEME="${{ matrix.scheme }}" \
+            FINALPACKAGE=1
+          mkdir -p out
+          for package in packages/*.deb; do
+            [ -f "$package" ] || continue
+            name="$(basename "$package" .deb)"
+            cp "$package" "out/${name}-${{ matrix.type }}.deb"
+          done
+          test "$(find out -maxdepth 1 -name '*.deb' | wc -l)" -eq 1
+
+      - name: Verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          deb="$(ls ./*.deb)"
+          actual_arch="$(dpkg-deb -f "$deb" Architecture)"
+          test "$actual_arch" = "${{ matrix.architecture }}"
+          echo "$deb: $(dpkg-deb -f "$deb" Package) $(dpkg-deb -f "$deb" Version) [$actual_arch]"
+          shasum -a 256 ./*.deb > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: AdSkip-${{ matrix.type }}
+          path: out/*.deb
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    name: Publish debs to GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          pattern: AdSkip-*
+          path: debs
+          merge-multiple: true
+
+      - name: Publish deb to GitHub Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -l debs/*.deb
+          test "$(find debs -maxdepth 1 -name '*-rootless.deb' | wc -l)" -eq 1
+          test "$(find debs -maxdepth 1 -name '*-roothide.deb' | wc -l)" -eq 1
+
+          tag=dev-builds
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --target "$GITHUB_SHA" \
+              --title "AdSkip — dev builds" \
+              --notes "Automatic rootless and roothide builds of the dev branch." \
+              --prerelease
+          fi
+
+          # Fixed-name copies so the download URL never depends on the version.
+          cp debs/*-rootless.deb debs/AdSkip-dev-rootless.deb
+          cp debs/*-roothide.deb debs/AdSkip-dev-roothide.deb
+          ( cd debs && sha256sum ./*.deb > SHA256SUMS )
+
+          gh release upload "$tag" debs/*.deb debs/SHA256SUMS --clobber
+          echo "https://github.com/$GH_REPO/releases/download/$tag/AdSkip-dev-rootless.deb"
+          echo "https://github.com/$GH_REPO/releases/download/$tag/AdSkip-dev-roothide.deb"
+
+  deploy:
+    name: Push packages to repo
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out LockScreenRestore
+        uses: actions/checkout@main
+        with:
+          path: src
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@main
+        with:
+          pattern: LockScreenRestore-*
+          path: packages
+          merge-multiple: true
+
+      - name: Verify both packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find packages -maxdepth 1 -name '*.deb' | wc -l)" -eq 2
+          test "$(find packages -maxdepth 1 -name '*-rootless.deb' | wc -l)" -eq 1
+          test "$(find packages -maxdepth 1 -name '*-roothide.deb' | wc -l)" -eq 1
+          ls -l packages/*.deb
+
+      - name: Check out package source
+        uses: actions/checkout@main
+        with:
+          repository: wwg151/repo
+          token: ${{ secrets.DEPLOY_PAT }}
+          path: website
+
+      - name: Copy AdSkip packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p website/debs
+          cp packages/*.deb website/debs/
+          ls -l website/debs/com.mg.adskip_*.deb
+
+      - name: Generate Sileo depiction
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p website/depictions
+          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.mg.adskip.json
+
+      - name: Commit and push packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd website
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add debs/ depictions/
+          if git diff --cached --quiet; then
+            echo "No package changes to deploy."
+          else
+            git commit -m "chore: update LockScreenRestore packages (${{ github.sha }})"
+            git push
+          fi
