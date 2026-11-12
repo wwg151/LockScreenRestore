@@ -1,4 +1,4 @@
-Package: com.aronsz26.lockscreenrestore
+Package: com.mg.LockScreenRestore
 Name: LockScreenRestore
 Version: 1.9.5
 Architecture: iphoneos-arm64
