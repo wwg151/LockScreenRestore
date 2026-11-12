@@ -207,14 +207,14 @@ jobs:
           set -euo pipefail
           mkdir -p website/debs
           cp packages/*.deb website/debs/
-          ls -l website/debs/com.mg.LockScreenRestore_*.deb
+          ls -l website/debs/com.aronsz26.lockscreenrestore_*.deb
 
       - name: Generate Sileo depiction
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p website/depictions
-          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.mg.LockScreenRestore.json
+          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.aronsz26.lockscreenrestore.json
 
       - name: Commit and push packages
         shell: bash
