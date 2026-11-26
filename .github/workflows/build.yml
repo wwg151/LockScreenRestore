@@ -197,7 +197,7 @@ jobs:
       - name: Check out package source
         uses: actions/checkout@main
         with:
-          repository: wwg151/repo
+          repository: wwg151/wwg151.github.io
           token: ${{ secrets.DEPLOY_PAT }}
           path: website
 
@@ -209,13 +209,6 @@ jobs:
           cp packages/*.deb website/debs/
           ls -l website/debs/com.aronsz26.lockscreenrestore_*.deb
 
-      - name: Generate Sileo depiction
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p website/depictions
-          python3 src/scripts/make_depiction.py src/control src/CHANGELOG.md > website/depictions/com.aronsz26.lockscreenrestore.json
-
       - name: Commit and push packages
         shell: bash
         run: |
@@ -223,7 +216,6 @@ jobs:
           cd website
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add debs/ depictions/
           if git diff --cached --quiet; then
             echo "No package changes to deploy."
           else
