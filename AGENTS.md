@@ -1,0 +1,6 @@
+# LockScreenRestore
+
+- This workspace builds on-device with `apelin_project_build`. Its local `apelin-project.json` declares `sh apelin/build.sh` as the external build. The script uses `icli probe` and `apelin/logos2objc.js` to translate Logos, then compiles, signs and packages the bootstrap selected by Apelin. It needs the local, ignored `apelin/vendor/theos-headers` include tree. Do not invoke the package script directly or install Theos on-device.
+- The local Logos converter is not the upstream Logos compiler. In particular, a successful build does not verify hooks that use explicit class rebinding in `%init`. Treat wallpaper hook behavior as unverified until tested on-device.
+- The preference bundle keeps separate `en.lproj` and `zh-Hans.lproj` resources: `LSRText.strings` for settings rows and footers, `Localizable.strings` for settings dialogs and language names, and `Wallpaper.strings` for the custom wallpaper UI. Keep the same keys in both locales and do not inline translated text in source.
+- Install only when requested; the user normally installs manually through Apelin's distribution UI. To test, open the plugin in Settings, confirm the Language row is directly after Fix Positions, switch both ways without respringing, reopen Settings to verify persistence, then open Settings > Wallpaper and its preview to verify the selected language there.

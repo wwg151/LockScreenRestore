@@ -1,6 +1,7 @@
 /* LockScreenRestore preference bundle — English (base) strings.
    Keys are the strings written in Resources/Root.plist. */
 "LockScreenRestore" = "LockScreenRestore";
+"Language" = "Language";
 
 "Padlock, time and date with iOS 15 sizes and positions, plain white instead of tinted, no depth effect." = "Padlock, time and date with iOS 15 sizes and positions, plain white instead of tinted, no depth effect.";
 "iOS 15 Clock" = "iOS 15 Clock";

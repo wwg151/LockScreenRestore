@@ -173,6 +173,20 @@
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>id</key>
+			<string>LSRLanguage</string>
+			<key>label</key>
+			<string>Language</string>
+			<key>action</key>
+			<string>chooseLanguage</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
 			<key>footerText</key>
 			<string>Changes take effect after a respring.</string>
 		</dict>

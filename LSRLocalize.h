@@ -1,12 +1,8 @@
-// Bilingual text for the interface the tweak draws itself: the iOS 15 "Settings > Wallpaper"
-// page and its preview sheets. The settings bundle keeps its own text in
-// Resources/<language>.lproj/*.strings; these strings are compiled in because the tweak runs in
-// SpringBoard, Preferences and MediaRemoteUI, where that bundle is not always loaded.
-//
-// English until a language is selected in the settings pane ("uiLanguage" in
-// com.aronsz26.lockscreenrestore: "zh" for Chinese, "en" or unset for English).
+#pragma once
 
 #import <Foundation/Foundation.h>
+
+// The setting is shared by the preference pane and the tweak's wallpaper UI.
 
 static NSString *const kLSRLanguageDomain = @"com.aronsz26.lockscreenrestore";
 static NSString *const kLSRLanguageKey = @"uiLanguage";
@@ -24,10 +20,9 @@ static inline NSString *LSRUILanguageCode(void) {
     return [LSRLanguageOverride() isEqualToString:@"zh"] ? @"zh" : @"en";
 }
 
-static inline BOOL LSRUsesChinese(void) {
-    return [LSRUILanguageCode() isEqualToString:@"zh"];
-}
-
-static inline NSString *LSRText(NSString *english, NSString *chinese) {
-    return LSRUsesChinese() ? chinese : english;
+static inline NSDictionary<NSString *, NSString *> *LSRReadStrings(NSString *bundlePath, NSString *code, NSString *table) {
+    NSString *folder = [code isEqualToString:@"zh"] ? @"zh-Hans.lproj" : @"en.lproj";
+    NSString *path = [[bundlePath stringByAppendingPathComponent:folder]
+        stringByAppendingPathComponent:[table stringByAppendingPathExtension:@"strings"]];
+    return path ? ([NSDictionary dictionaryWithContentsOfFile:path] ?: @{}) : @{};
 }

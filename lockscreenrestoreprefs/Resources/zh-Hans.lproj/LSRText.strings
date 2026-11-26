@@ -1,6 +1,7 @@
 /* LockScreenRestore 设置面板 —— 简体中文文案。
    左侧是 Resources/Root.plist 里的英文原文，右侧是中文。 */
 "LockScreenRestore" = "LockScreenRestore";
+"Language" = "语言";
 
 "Padlock, time and date with iOS 15 sizes and positions, plain white instead of tinted, no depth effect." = "挂锁、时间和日期采用 iOS 15 的大小与位置，纯白色而非着色，也没有景深效果。";
 "iOS 15 Clock" = "iOS 15 时钟";
