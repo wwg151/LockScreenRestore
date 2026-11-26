@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: adskip-${{ github.workflow }}-${{ github.ref }}
+  group: lockscreenrestore-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -201,13 +201,13 @@ jobs:
           token: ${{ secrets.DEPLOY_PAT }}
           path: website
 
-      - name: Copy AdSkip packages
+      - name: Copy LockScreenRestore packages
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p website/debs
           cp packages/*.deb website/debs/
-          ls -l website/debs/com.aronsz26.lockscreenrestore_*.deb
+          ls -l website/debs/*.deb
 
       - name: Commit and push packages
         shell: bash
@@ -216,9 +216,18 @@ jobs:
           cd website
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all debs
           if git diff --cached --quiet; then
             echo "No package changes to deploy."
-          else
-            git commit -m "chore: update LockScreenRestore packages (${{ github.sha }})"
-            git push
+            exit 0
           fi
+          git commit -m "chore: update LockScreenRestore packages (${{ github.sha }})"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push failed (attempt $attempt), rebasing on the remote and retrying."
+            git pull --rebase --autostash
+            sleep 5
+          done
+          exit 1
