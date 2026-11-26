@@ -81,9 +81,11 @@ static NSString *LSRLocalized(NSString *key) {
 static NSString *const kLSRLanguageRow = @"LSRLanguage";
 
 @interface LSRRootListController : PSListController
+@property (nonatomic, weak) UITableView *languageTable;
 - (void)applyLanguage;
 - (void)chooseLanguage:(PSSpecifier *)specifier;
-- (void)selectLanguage:(NSString *)code;
+- (void)showLanguageSheetInTable:(UITableView *)table atIndexPath:(NSIndexPath *)indexPath;
+- (void)selectLanguage:(NSString *)code inTable:(UITableView *)table;
 @end
 
 @implementation LSRRootListController
@@ -122,6 +124,7 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
     if (![[self specifierAtIndexPath:indexPath].identifier isEqualToString:kLSRLanguageRow]) return cell;
 
+    self.languageTable = tableView;
     cell.textLabel.textColor = [UIColor labelColor];
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     UILabel *value = [UILabel new];
@@ -144,16 +147,19 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
     if ([specifier.identifier isEqualToString:kLSRLanguageRow]) {
-        [self chooseLanguage:specifier];
+        [self showLanguageSheetInTable:tableView atIndexPath:indexPath];
         return;
     }
     [super tableView:tableView didSelectRowAtIndexPath:indexPath];
 }
 
 - (void)chooseLanguage:(PSSpecifier *)specifier {
+    UITableView *table = self.languageTable;
+    [self showLanguageSheetInTable:table atIndexPath:table.indexPathForSelectedRow];
+}
+
+- (void)showLanguageSheetInTable:(UITableView *)table atIndexPath:(NSIndexPath *)indexPath {
     if (self.presentedViewController) return;
-    UITableView *table = self.tableView;
-    NSIndexPath *indexPath = specifier ? [self indexPathForSpecifier:specifier] : nil;
     UITableViewCell *cell = indexPath ? [table cellForRowAtIndexPath:indexPath] : nil;
     if (indexPath) [table deselectRowAtIndexPath:indexPath animated:YES];
 
@@ -161,10 +167,11 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
         message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     NSString *current = LSRUILanguageCode();
     __weak LSRRootListController *weakSelf = self;
+    __weak UITableView *weakTable = table;
     for (NSString *code in @[@"zh", @"en"]) {
         UIAlertAction *action = [UIAlertAction actionWithTitle:LSRLanguageName(code)
             style:UIAlertActionStyleDefault handler:^(UIAlertAction *choice) {
-                [weakSelf selectLanguage:code];
+                [weakSelf selectLanguage:code inTable:weakTable];
             }];
         action.enabled = ![code isEqualToString:current];
         [sheet addAction:action];
@@ -177,12 +184,12 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
-- (void)selectLanguage:(NSString *)code {
-    CGPoint offset = self.tableView.contentOffset;
+- (void)selectLanguage:(NSString *)code inTable:(UITableView *)table {
+    CGPoint offset = table ? table.contentOffset : CGPointZero;
     LSRSetPref(kLSRLanguageKey, code);
     [self reloadSpecifiers];
-    [self.tableView layoutIfNeeded];
-    UITableView *table = self.tableView;
+    if (!table) return;
+    [table layoutIfNeeded];
     CGFloat minY = -table.adjustedContentInset.top;
     CGFloat maxY = MAX(minY, table.contentSize.height - CGRectGetHeight(table.bounds) + table.adjustedContentInset.bottom);
     offset.y = MIN(MAX(offset.y, minY), maxY);
