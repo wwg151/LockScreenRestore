@@ -181,8 +181,8 @@
 			<string>LSRLanguage</string>
 			<key>label</key>
 			<string>Language</string>
-			<key>action</key>
-			<string>chooseLanguage</string>
+			<key>buttonAction</key>
+			<string>chooseLanguage:</string>
 		</dict>
 		<dict>
 			<key>cell</key>

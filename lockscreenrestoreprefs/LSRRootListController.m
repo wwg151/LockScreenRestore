@@ -82,7 +82,7 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
 
 @interface LSRRootListController : PSListController
 - (void)applyLanguage;
-- (void)chooseLanguage;
+- (void)chooseLanguage:(PSSpecifier *)specifier;
 - (void)selectLanguage:(NSString *)code;
 @end
 
@@ -120,9 +120,10 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-    if ([self specifierAtIndexPath:indexPath] != [self specifierForID:kLSRLanguageRow]) return cell;
+    if (![[self specifierAtIndexPath:indexPath].identifier isEqualToString:kLSRLanguageRow]) return cell;
 
-    cell.imageView.image = [UIImage systemImageNamed:@"globe"];
+    cell.textLabel.textColor = [UIColor labelColor];
+    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     UILabel *value = [UILabel new];
     value.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     value.textColor = [UIColor secondaryLabelColor];
@@ -133,16 +134,25 @@ static NSString *const kLSRLanguageRow = @"LSRLanguage";
     UIStackView *accessory = [[UIStackView alloc] initWithArrangedSubviews:@[value, chevron]];
     accessory.spacing = 7;
     accessory.alignment = UIStackViewAlignmentCenter;
+    accessory.userInteractionEnabled = NO;
     accessory.frame = (CGRect){CGPointZero, [accessory systemLayoutSizeFittingSize:UILayoutFittingCompressedSize]};
     cell.accessoryView = accessory;
     cell.accessibilityValue = value.text;
     return cell;
 }
 
-- (void)chooseLanguage {
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    PSSpecifier *specifier = [self specifierAtIndexPath:indexPath];
+    if ([specifier.identifier isEqualToString:kLSRLanguageRow]) {
+        [self chooseLanguage:specifier];
+        return;
+    }
+    [super tableView:tableView didSelectRowAtIndexPath:indexPath];
+}
+
+- (void)chooseLanguage:(PSSpecifier *)specifier {
     if (self.presentedViewController) return;
     UITableView *table = self.tableView;
-    PSSpecifier *specifier = [self specifierForID:kLSRLanguageRow];
     NSIndexPath *indexPath = specifier ? [self indexPathForSpecifier:specifier] : nil;
     UITableViewCell *cell = indexPath ? [table cellForRowAtIndexPath:indexPath] : nil;
     if (indexPath) [table deselectRowAtIndexPath:indexPath animated:YES];
