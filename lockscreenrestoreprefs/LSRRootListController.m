@@ -1,6 +1,8 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
+#import <objc/runtime.h>
 #import <sys/sysctl.h>
+#import "../LSRLocalize.h"
 
 @interface FBSSystemService : NSObject
 + (instancetype)sharedService;
@@ -48,7 +50,150 @@ static NSString *LSRDeviceName(NSString *model) {
     return names[model] ?: model;
 }
 
+// The panel's text lives beside the bundle in en.lproj and zh-Hans.lproj: LSRText.strings holds
+// the labels and footnotes of Root.plist, Localizable.strings the alerts and the language sheet.
+// The language picked with the globe button wins over the device language (see LSRLocalize.h);
+// Root.plist itself stays English and is never handed to Preferences' own localization, so what
+// is on screen is exactly the table we choose.
+static char kLSROriginalTextKey;
+
+static void LSRSetPref(NSString *key, id value);
+
+static NSBundle *LSRBundle(void) {
+    static NSBundle *bundle;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        bundle = [NSBundle bundleForClass:NSClassFromString(@"LSRRootListController")]
+            ?: [NSBundle bundleWithIdentifier:@"com.aronsz26.lockscreenrestore.prefs"];
+    });
+    return bundle;
+}
+
+static NSDictionary *LSRStringsTable(NSString *name) {
+    NSString *language = LSRUsesChinese() ? @"zh-Hans" : @"en";
+    NSString *path = [LSRBundle() pathForResource:name ofType:@"strings" inDirectory:nil forLocalization:language];
+    return path ? ([NSDictionary dictionaryWithContentsOfFile:path] ?: @{}) : @{};
+}
+
+static NSString *LSRLocalized(NSString *key) {
+    return LSRStringsTable(@"Localizable")[key] ?: key;
+}
+
+// A small menu that hangs under the globe button and is only as wide as its longest entry;
+// UIMenu is a fixed width, which looked too wide for two short language names.
+@interface LSRLanguagePopoverController : UIViewController
+@property (nonatomic, copy) NSArray<NSString *> *titles;
+@property (nonatomic) NSInteger selectedIndex;
+@property (nonatomic, weak) UIView *anchorView;
+@property (nonatomic, copy) void (^selectionHandler)(NSInteger index);
+@end
+
 @interface LSRRootListController : PSListController
+- (void)applyLanguage;
+- (UIBarButtonItem *)languageButton;
+- (void)showLanguagePopover:(UIButton *)sender;
+- (void)selectLanguage:(NSString *)code;
+@end
+
+@implementation LSRLanguagePopoverController {
+    UIVisualEffectView *_panel;
+    NSMutableArray<UIButton *> *_rows;
+    UIImageView *_check;
+}
+
+- (instancetype)init {
+    if ((self = [super init])) {
+        _rows = [NSMutableArray new];
+        self.modalPresentationStyle = UIModalPresentationOverFullScreen;
+    }
+    return self;
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor clearColor];
+
+    UIControl *outside = [[UIControl alloc] initWithFrame:self.view.bounds];
+    outside.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [outside addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:outside];
+
+    _panel = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    _panel.layer.cornerRadius = 13;
+    _panel.layer.cornerCurve = kCACornerCurveContinuous;
+    _panel.clipsToBounds = YES;
+    [self.view addSubview:_panel];
+
+    for (NSUInteger i = 0; i < self.titles.count; i++) {
+        UIButton *row = [UIButton buttonWithType:UIButtonTypeSystem];
+        row.tag = (NSInteger)i;
+        row.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        row.titleLabel.font = [UIFont systemFontOfSize:17];
+        [row setTitle:self.titles[i] forState:UIControlStateNormal];
+        [row setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+        [row addTarget:self action:@selector(choose:) forControlEvents:UIControlEventTouchUpInside];
+        [_panel.contentView addSubview:row];
+        [_rows addObject:row];
+
+        if (i + 1 < self.titles.count) {
+            UIView *line = [[UIView alloc] init];
+            line.backgroundColor = [UIColor separatorColor];
+            line.tag = 9000 + (NSInteger)i;
+            [_panel.contentView addSubview:line];
+        }
+    }
+
+    _check = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark"]];
+    _check.tintColor = self.view.tintColor;
+    _check.contentMode = UIViewContentModeScaleAspectFit;
+    _check.hidden = self.selectedIndex < 0;
+    [_panel.contentView addSubview:_check];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+
+    CGFloat rowHeight = 44.0;
+    CGFloat padding = 16.0;
+    CGFloat checkmark = 26.0;
+    UIFont *font = [UIFont systemFontOfSize:17];
+    CGFloat widest = 0;
+    for (NSString *title in self.titles) {
+        widest = MAX(widest, [title sizeWithAttributes:@{NSFontAttributeName: font}].width);
+    }
+    CGFloat width = ceil(widest + padding * 2 + checkmark);
+    CGFloat height = rowHeight * (CGFloat)self.titles.count;
+
+    // Right under the button, centred on it and kept inside the screen.
+    CGRect anchor = CGRectZero;
+    if (self.anchorView.window) anchor = [self.anchorView.superview convertRect:self.anchorView.frame toView:self.view];
+    CGFloat x = CGRectGetMidX(anchor) - width / 2.0;
+    x = MAX(8.0, MIN(x, CGRectGetWidth(self.view.bounds) - width - 8.0));
+    CGFloat y = anchor.size.height > 0 ? CGRectGetMaxY(anchor) + 6.0 : 120.0;
+    _panel.frame = CGRectMake(round(x), round(y), width, height);
+
+    for (NSUInteger i = 0; i < _rows.count; i++) {
+        _rows[i].frame = CGRectMake(padding, rowHeight * (CGFloat)i, width - padding * 2, rowHeight);
+        UIView *line = [_panel.contentView viewWithTag:9000 + (NSInteger)i];
+        if (line) line.frame = CGRectMake(padding, rowHeight * (CGFloat)(i + 1), width - padding * 2, 0.5);
+    }
+    if (self.selectedIndex >= 0 && self.selectedIndex < (NSInteger)_rows.count) {
+        _check.frame = CGRectMake(width - padding - 20, rowHeight * (CGFloat)self.selectedIndex + (rowHeight - 20) / 2.0, 20, 20);
+    }
+}
+
+- (void)choose:(UIButton *)row {
+    NSInteger index = row.tag;
+    void (^handler)(NSInteger) = self.selectionHandler;
+    [self dismissViewControllerAnimated:NO completion:^{
+        if (handler) handler(index);
+    }];
+}
+
+- (void)close {
+    [self dismissViewControllerAnimated:NO completion:nil];
+}
+
 @end
 
 @implementation LSRRootListController
@@ -56,8 +201,65 @@ static NSString *LSRDeviceName(NSString *model) {
 - (NSArray *)specifiers {
     if (!_specifiers) {
         _specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
+        [self applyLanguage];
     }
     return _specifiers;
+}
+
+- (void)applyLanguage {
+    NSDictionary *table = LSRStringsTable(@"LSRText");
+    for (PSSpecifier *specifier in _specifiers) {
+        NSMutableDictionary *original = objc_getAssociatedObject(specifier, &kLSROriginalTextKey);
+        if (!original) {
+            original = [NSMutableDictionary new];
+            for (NSString *key in @[@"label", @"footerText", @"title"]) {
+                NSString *value = [specifier propertyForKey:key];
+                if (value) original[key] = value;
+            }
+            objc_setAssociatedObject(specifier, &kLSROriginalTextKey, original, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        [original enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) {
+            [specifier setProperty:(table[value] ?: value) forKey:key];
+        }];
+        // A cell takes its text from the specifier's name, not from the label property, so the
+        // switch and group titles only follow the language through this.
+        NSString *label = original[@"label"];
+        if (label) specifier.name = table[label] ?: label;
+    }
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.navigationItem.rightBarButtonItem = [self languageButton];
+}
+
+// The button carries its own view so the menu knows where to hang from.
+- (UIBarButtonItem *)languageButton {
+    UIButton *globe = [UIButton buttonWithType:UIButtonTypeSystem];
+    [globe setImage:[UIImage systemImageNamed:@"globe"] forState:UIControlStateNormal];
+    globe.frame = CGRectMake(0, 0, 30, 30);
+    [globe addTarget:self action:@selector(showLanguagePopover:) forControlEvents:UIControlEventTouchUpInside];
+    return [[UIBarButtonItem alloc] initWithCustomView:globe];
+}
+
+- (void)showLanguagePopover:(UIButton *)sender {
+    LSRLanguagePopoverController *popover = [LSRLanguagePopoverController new];
+    popover.titles = @[@"中文", @"English"];
+    popover.selectedIndex = LSRUsesChinese() ? 0 : 1;
+    popover.anchorView = sender;
+    __weak LSRRootListController *weakSelf = self;
+    popover.selectionHandler = ^(NSInteger index) {
+        [weakSelf selectLanguage:index == 0 ? @"zh" : @"en"];
+    };
+    [self presentViewController:popover animated:NO completion:nil];
+}
+
+// Chinese or English for this panel and the tweak's own screens. The choice is saved in the
+// tweak's own preferences, so SpringBoard and the wallpaper page read the same language.
+- (void)selectLanguage:(NSString *)code {
+    LSRSetPref(kLSRLanguageKey, code);
+    [self applyLanguage];
+    [self reloadSpecifiers];
 }
 
 // The tweak reads the plist straight from disk when SpringBoard starts, but cfprefsd keeps
@@ -95,6 +297,15 @@ static void LSRWritePrefsFile(NSString *changedKey, id changedValue) {
     [prefs writeToFile:path atomically:YES];
 }
 
+// A value that has no row in Root.plist (the language): cfprefsd first, so the tweak reads it at
+// once, then the file SpringBoard reads.
+static void LSRSetPref(NSString *key, id value) {
+    CFStringRef domain = (__bridge CFStringRef)kLSRDomain;
+    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, domain);
+    CFPreferencesAppSynchronize(domain);
+    LSRWritePrefsFile(key, value);
+}
+
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     [super setPreferenceValue:value specifier:specifier];
     LSRWritePrefsFile([specifier propertyForKey:@"key"], value);
@@ -103,11 +314,11 @@ static void LSRWritePrefsFile(NSString *changedKey, id changedValue) {
 // Every switch and the Clock Size slider back to its default (the wallpapers picked in
 // Settings > Wallpaper stay), then a respring so SpringBoard picks it up.
 - (void)resetToDefaults {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Reset to Defaults"
-        message:@"All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring."
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Reset to Defaults")
+        message:LSRLocalized(@"All switches and Clock Size go back to their defaults. Your wallpapers stay as they are. Your iPhone will respring.")
         preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Reset") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         CFStringRef domain = (__bridge CFStringRef)kLSRDomain;
         NSMutableArray<NSString *> *keys = [NSMutableArray new];
         for (PSSpecifier *specifier in [self specifiers]) {
@@ -145,16 +356,17 @@ static void LSRWritePrefsFile(NSString *changedKey, id changedValue) {
 
     NSMutableString *message = [NSMutableString stringWithFormat:@"%@\n%.0f × %.0f pt @%.0fx\n\n",
         LSRDeviceName(model), MIN(size.width, size.height), MAX(size.width, size.height), screen.scale];
-    [message appendString:@"Padlock, clock, date and Focus pill will be recalculated for this screen after a respring."];
+    [message appendString:LSRLocalized(@"Padlock, clock, date and Focus pill will be recalculated for this screen after a respring.")];
     if (![model isEqualToString:kLSRTestedModel]) {
-        [message appendString:@"\n\nThis iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot."];
+        [message appendFormat:@"\n\n%@",
+            LSRLocalized(@"This iPhone hasn't been tested yet. If something looks off, please open an issue on GitHub with a screenshot.")];
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Fix Positions"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:LSRLocalized(@"Fix Positions")
                                                                    message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Respring" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:LSRLocalized(@"Respring") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         [self respring];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
